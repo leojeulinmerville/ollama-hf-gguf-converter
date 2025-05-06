@@ -1,0 +1,40 @@
+name: Convert HF model to GGUF for Ollama
+
+on:
+  workflow_dispatch:
+
+jobs:
+  convert-and-publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y git-lfs build-essential python3-pip
+          pip install transformers sentencepiece
+
+      - name: Clone llama.cpp
+        run: |
+          git clone https://github.com/ggerganov/llama.cpp
+          cd llama.cpp && make
+
+      - name: Download HF model
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git lfs install
+          GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/BioMistral/BioMistral-7B-DARE
+          cd BioMistral-7B-DARE && git lfs pull
+
+      - name: Convert model to GGUF
+        run: |
+          python3 llama.cpp/convert.py BioMistral-7B-DARE --outfile biomistral7b-dare.gguf
+
+      - name: Upload GGUF model
+        uses: actions/upload-artifact@v3
+        with:
+          name: biomistral7b-dare-gguf
+          path: biomistral7b-dare.gguf
