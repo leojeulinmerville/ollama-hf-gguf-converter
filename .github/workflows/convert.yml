@@ -34,7 +34,7 @@ jobs:
           python3 llama.cpp/convert.py BioMistral-7B-DARE --outfile biomistral7b-dare.gguf
 
       - name: Upload GGUF model
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v2
         with:
           name: biomistral7b-dare-gguf
           path: biomistral7b-dare.gguf
