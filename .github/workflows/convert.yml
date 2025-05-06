@@ -1,18 +1,18 @@
 name: Convert HF model to GGUF for Ollama
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:            # lancement manuel depuis l’onglet Actions
 
 jobs:
   convert-and-publish:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout du dépôt GitHub
+      # 1️⃣ Récupère ton dépôt GitHub
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      # 2. Dépendances système & Python
+      # 2️⃣ Installe Git-LFS + Python + dépendances de conversion
       - name: Install dependencies
         run: |
           sudo apt update
@@ -20,27 +20,34 @@ jobs:
           pip install --upgrade pip
           pip install transformers sentencepiece
 
-      # 3. Clone llama.cpp (on ne compile plus)
+      # 3️⃣ Clone uniquement le code de llama.cpp (pas besoin de compiler)
       - name: Clone llama.cpp (converter only)
         run: |
           git clone --depth 1 https://github.com/ggerganov/llama.cpp
 
-      # 4. Téléchargement du modèle Hugging Face
+      # 4️⃣ (Option debug) affiche la longueur du token pour vérifier qu’il arrive
+      - name: Debug HF_TOKEN length
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: echo "HF_TOKEN length = ${#HF_TOKEN}"
+
+      # 5️⃣ Télécharge le modèle Hugging Face avec le token
       - name: Download HF model
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git lfs install
-          git clone https://$HF_TOKEN@huggingface.co/BioMistral/BioMistral-7B-DARE
+          # username vide, token en mot de passe → syntaxe officielle HF
+          git clone https://:${HF_TOKEN}@huggingface.co/BioMistral/BioMistral-7B-DARE
           cd BioMistral-7B-DARE && git lfs pull
 
-      # 5. Conversion vers GGUF (le script python suffit)
+      # 6️⃣ Convertit vers GGUF (script Python)
       - name: Convert to GGUF
         run: |
           python3 llama.cpp/convert.py BioMistral-7B-DARE \
                  --outfile biomistral7b-dare.gguf
 
-      # 6. Upload de l’artefact
+      # 7️⃣ Uploade le fichier GGUF en artefact
       - name: Upload GGUF
         uses: actions/upload-artifact@v4
         with:
