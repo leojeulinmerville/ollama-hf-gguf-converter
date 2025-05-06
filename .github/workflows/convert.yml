@@ -1,40 +1,50 @@
 name: Convert HF model to GGUF for Ollama
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:        # lancement manuel
 
 jobs:
   convert-and-publish:
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
 
+    steps:
+      # 1️⃣ Récupération du dépôt
+      - name: Checkout repo
+        uses: actions/checkout@v4     # dernière version stable
+
+      # 2️⃣ Dépendances système et Python
       - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y git-lfs build-essential python3-pip
+          pip install --upgrade pip
           pip install transformers sentencepiece
 
-      - name: Clone llama.cpp
+      # 3️⃣ llama.cpp
+      - name: Clone & build llama.cpp
         run: |
           git clone https://github.com/ggerganov/llama.cpp
           cd llama.cpp && make
 
+      # 4️⃣ Téléchargement du modèle HF (token dans secrets)
       - name: Download HF model
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           git lfs install
-          GIT_LFS_SKIP_SMUDGE=1 git clone https://huggingface.co/BioMistral/BioMistral-7B-DARE
+          git clone https://$HF_TOKEN@huggingface.co/BioMistral/BioMistral-7B-DARE
           cd BioMistral-7B-DARE && git lfs pull
 
-      - name: Convert model to GGUF
+      # 5️⃣ Conversion -> GGUF
+      - name: Convert to GGUF
         run: |
-          python3 llama.cpp/convert.py BioMistral-7B-DARE --outfile biomistral7b-dare.gguf
+          python3 llama.cpp/convert.py BioMistral-7B-DARE \
+                 --outfile biomistral7b-dare.gguf
 
-      - name: Upload GGUF model
-        uses: actions/upload-artifact@v2
+      # 6️⃣ Upload de l’artefact GGUF
+      - name: Upload GGUF
+        uses: actions/upload-artifact@v4   # v4 fonctionne, v2/v3 dépréciés
         with:
           name: biomistral7b-dare-gguf
           path: biomistral7b-dare.gguf
+          if-no-files-found: error
