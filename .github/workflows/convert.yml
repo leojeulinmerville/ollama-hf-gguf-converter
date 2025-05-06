@@ -1,32 +1,31 @@
 name: Convert HF model to GGUF for Ollama
 
 on:
-  workflow_dispatch:        # lancement manuel
+  workflow_dispatch:
 
 jobs:
   convert-and-publish:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Récupération du dépôt
+      # 1. Checkout du dépôt GitHub
       - name: Checkout repo
-        uses: actions/checkout@v4     # dernière version stable
+        uses: actions/checkout@v4
 
-      # 2️⃣ Dépendances système et Python
+      # 2. Dépendances système & Python
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y git-lfs build-essential python3-pip
+          sudo apt install -y git-lfs python3-pip
           pip install --upgrade pip
           pip install transformers sentencepiece
 
-      # 3️⃣ llama.cpp
-      - name: Clone & build llama.cpp
+      # 3. Clone llama.cpp (on ne compile plus)
+      - name: Clone llama.cpp (converter only)
         run: |
-          git clone https://github.com/ggerganov/llama.cpp
-          cd llama.cpp && make
+          git clone --depth 1 https://github.com/ggerganov/llama.cpp
 
-      # 4️⃣ Téléchargement du modèle HF (token dans secrets)
+      # 4. Téléchargement du modèle Hugging Face
       - name: Download HF model
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -35,15 +34,15 @@ jobs:
           git clone https://$HF_TOKEN@huggingface.co/BioMistral/BioMistral-7B-DARE
           cd BioMistral-7B-DARE && git lfs pull
 
-      # 5️⃣ Conversion -> GGUF
+      # 5. Conversion vers GGUF (le script python suffit)
       - name: Convert to GGUF
         run: |
           python3 llama.cpp/convert.py BioMistral-7B-DARE \
                  --outfile biomistral7b-dare.gguf
 
-      # 6️⃣ Upload de l’artefact GGUF
+      # 6. Upload de l’artefact
       - name: Upload GGUF
-        uses: actions/upload-artifact@v4   # v4 fonctionne, v2/v3 dépréciés
+        uses: actions/upload-artifact@v4
         with:
           name: biomistral7b-dare-gguf
           path: biomistral7b-dare.gguf
